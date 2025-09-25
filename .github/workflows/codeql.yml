@@ -1,0 +1,56 @@
+name: "CodeQL Advanced"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '0 0 * * 0'  # weekly scan on Sundays
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        language: [ "java", "javascript" ]  # add Python if used
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Cache CodeQL database for faster builds
+      - name: Cache CodeQL Database
+        uses: actions/cache@v3
+        with:
+          path: ${{ runner.temp }}/codeql-db-${{ matrix.language }}
+          key: codeql-db-${{ matrix.language }}-${{ github.sha }}
+          restore-keys: |
+            codeql-db-${{ matrix.language }}-
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ${{ matrix.language }}
+          # Optionally include custom queries from a directory in your repo
+          queries: ./codeql-queries  # create this folder and add .ql files
+
+      # Build your project (if required for CodeQL to analyze properly)
+      - name: Build Project
+        if: matrix.language == 'java'
+        run: ./gradlew build
+      - name: Build Project
+        if: matrix.language == 'javascript'
+        run: npm install
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          category: "security-and-quality"
+
+      # Optionally upload results as artifact
+      - name: Upload CodeQL results
+        uses: actions/upload-artifact@v3
+        with:
+          name: codeql-results-${{ matrix.language }}
+          path: codeql-results
