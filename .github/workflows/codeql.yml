@@ -6,20 +6,22 @@ on:
   pull_request:
     branches: [ "main" ]
   schedule:
-    - cron: '0 0 * * 0'  # weekly scan on Sundays
+    - cron: '0 0 * * 0'  # Weekly scan on Sundays
 
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        language: [ "java", "javascript" ]  # add Python if used
+        language: [ "java", "javascript", "python" ]
+        # Add more: "csharp", "go", "ruby", etc. if needed
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Cache CodeQL database for faster builds
+      # Optional: Cache CodeQL database for faster runs
       - name: Cache CodeQL Database
         uses: actions/cache@v3
         with:
@@ -32,25 +34,14 @@ jobs:
         uses: github/codeql-action/init@v2
         with:
           languages: ${{ matrix.language }}
-          # Optionally include custom queries from a directory in your repo
-          queries: ./codeql-queries  # create this folder and add .ql files
+          # queries: ./codeql-queries  # Uncomment if you have custom queries
 
-      # Build your project (if required for CodeQL to analyze properly)
-      - name: Build Project
-        if: matrix.language == 'java'
-        run: ./gradlew build
-      - name: Build Project
-        if: matrix.language == 'javascript'
-        run: npm install
+      # ✨ Use autobuild instead of manual build
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v2
+        # This automatically detects and builds Java, JS, Python, etc.
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v2
         with:
           category: "security-and-quality"
-
-      # Optionally upload results as artifact
-      - name: Upload CodeQL results
-        uses: actions/upload-artifact@v3
-        with:
-          name: codeql-results-${{ matrix.language }}
-          path: codeql-results
